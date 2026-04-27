@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Menu</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .hero-banner {
+    background: var(--primary); border-radius: var(--radius-xl);
+    padding: 22px 24px; margin-bottom: 24px; color: white;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .hero-banner::after {
+    content: '🍽'; position: absolute; right: 20px; font-size: 72px;
+    opacity: 0.2; top: 50%; transform: translateY(-50%);
+  }
+  .hero-greeting { font-size: 13px; opacity: 0.85; }
+  .hero-title { font-size: 20px; font-weight: 700; font-family: 'Baloo 2', cursive; }
+  .hero-sub { font-size: 12px; opacity: 0.75; margin-top: 4px; }
+  .hero-time { font-size: 28px; font-weight: 800; font-family: 'Baloo 2', cursive; }
+
+  .rec-section { margin-bottom: 28px; }
+  .rec-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; font-weight: 600; color: var(--teal);
+    background: var(--teal-light); padding: 6px 14px;
+    border-radius: 20px; display: inline-flex; margin-bottom: 12px;
+  }
+  .rec-cards { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .rec-card {
+    min-width: 200px; background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 14px; scroll-snap-align: start;
+    cursor: pointer; transition: all 0.2s; position: relative;
+  }
+  .rec-card:hover { border-color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .rec-card-emoji { font-size: 32px; margin-bottom: 8px; }
+  .rec-card-name { font-size: 13px; font-weight: 600; color: var(--text); }
+  .rec-card-price { font-size: 15px; font-weight: 700; color: var(--primary); }
+  .rec-badge {
+    position: absolute; top: 8px; right: 8px;
+    background: #FEF3C7; color: #92400E;
+    font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px;
+  }
+
+  .filter-bar { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 20px; padding-bottom: 4px; }
+  .filter-btn {
+    white-space: nowrap; padding: 8px 16px; border-radius: 20px;
+    border: 1.5px solid var(--border); background: var(--surface);
+    font-family: 'Sora', sans-serif; font-size: 13px; font-weight: 500;
+    cursor: pointer; transition: all 0.2s; color: var(--text2);
+  }
+  .filter-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+  .search-bar {
+    position: relative; margin-bottom: 20px;
+  }
+  .search-bar input {
+    width: 100%; padding: 12px 16px 12px 44px;
+    border: 1.5px solid var(--border); border-radius: var(--radius);
+    font-family: 'Sora', sans-serif; font-size: 14px;
+    background: var(--surface); outline: none; color: var(--text);
+    transition: border-color 0.2s;
+  }
+  .search-bar input:focus { border-color: var(--primary); }
+  .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 18px; opacity: 0.5; }
+
+  .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .menu-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 16px; transition: all 0.2s;
+    position: relative; overflow: hidden;
+  }
+  .menu-card:hover { box-shadow: var(--shadow); transform: translateY(-2px); }
+  .menu-card.unavailable { opacity: 0.55; }
+  .menu-card-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; }
+  .menu-emoji { font-size: 40px; line-height: 1; }
+  .sold-out-tag {
+    position: absolute; top: 12px; right: 12px;
+    background: var(--danger); color: white;
+    font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+  }
+  .menu-name { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .menu-cat { font-size: 11px; color: var(--text3); margin-bottom: 8px; }
+  .menu-rating { font-size: 12px; color: #B45309; margin-bottom: 10px; }
+  .menu-footer { display: flex; align-items: center; justify-content: space-between; }
+  .menu-price { font-size: 20px; font-weight: 800; color: var(--primary); font-family: 'Baloo 2', cursive; }
+  .add-btn {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: var(--primary); color: white; border: none;
+    font-size: 22px; cursor: pointer; transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .add-btn:hover { background: var(--primary-dark); transform: scale(1.1); }
+  .qty-controls { display: flex; align-items: center; gap: 8px; }
+  .qty-btn {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1.5px solid var(--border); background: var(--surface2);
+    font-size: 16px; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .qty-btn:hover { border-color: var(--primary); }
+  .qty-val { font-size: 15px; font-weight: 700; color: var(--text); min-width: 20px; text-align: center; }
+  .cook-time { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 4px; }
+
+  .float-cart {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    z-index: 80; transition: all 0.3s;
+  }
+  .float-cart-btn {
+    background: var(--teal); color: white;
+    padding: 14px 28px; border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(15,123,108,0.4);
+    display: flex; align-items: center; gap: 12px;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer; border: none; font-family: 'Sora', sans-serif;
+    white-space: nowrap;
+    animation: floatUp 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes floatUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .float-cart-btn:hover { background: var(--teal-dark); box-shadow: 0 12px 32px rgba(15,123,108,0.5); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <a href="/menu" class="nav-brand">🍽 Canteen<span>Order</span></a>
+  <div class="nav-links">
+    <a href="/menu" class="nav-link active">Menu</a>
+    <a href="/orders" class="nav-link">My Orders</a>
+    <a href="/wallet" class="nav-link">Wallet</a>
+  </div>
+  <span class="nav-wallet-badge">₹<span class="nav-wallet">—</span></span>
+  <span class="nav-points-badge">⭐ <span class="nav-points">—</span></span>
+  <button class="btn btn-ghost btn-sm" onclick="logout()" style="margin-left:8px">Logout</button>
+</nav>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <div class="bottom-nav-items">
+    <a href="/menu" class="bottom-nav-item active">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>
+      Menu
+    </a>
+    <a href="/orders" class="bottom-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      Orders
+    </a>
+    <a href="/cart" class="bottom-nav-item" style="position:relative">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+      <span class="cart-badge-count cart-count" style="display:none">0</span>
+      Cart
+    </a>
+    <a href="/wallet" class="bottom-nav-item">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>
+      Wallet
+    </a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <!-- HERO -->
+  <div class="hero-banner">
+    <div>
+      <div class="hero-greeting">Good <span id="time-greeting">morning</span> 👋</div>
+      <div class="hero-title user-name">Welcome back!</div>
+      <div class="hero-sub" id="wait-info">⏱ Avg wait: checking queue...</div>
+    </div>
+    <div class="hero-time" id="live-clock">--:--</div>
+  </div>
+
+  <!-- RECOMMENDATIONS -->
+  <div class="rec-section">
+    <div class="rec-label">✨ Recommended for you</div>
+    <div class="rec-cards" id="rec-cards">
+      <div class="spinner" style="margin:0;width:28px;height:28px;border-width:2px"></div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-bar">
+    <span class="search-icon">🔍</span>
+    <input type="text" id="search-input" placeholder="Search food items..." oninput="filterMenu()">
+  </div>
+
+  <!-- FILTER BAR -->
+  <div class="filter-bar">
+    <button class="filter-btn active" onclick="setFilter('All',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('Breakfast',this)">🥣 Breakfast</button>
+    <button class="filter-btn" onclick="setFilter('Meals',this)">🍱 Meals</button>
+    <button class="filter-btn" onclick="setFilter('Snacks',this)">🥟 Snacks</button>
+    <button class="filter-btn" onclick="setFilter('Drinks',this)">☕ Drinks</button>
+  </div>
+
+  <!-- MENU GRID -->
+  <div class="menu-grid" id="menu-grid">
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<!-- FLOATING CART BUTTON -->
+<div class="float-cart" id="float-cart" style="display:none">
+  <button class="float-cart-btn" onclick="window.location='/cart'">
+    🛒 View Cart (<span id="float-cart-count">0</span> items) — ₹<span id="float-cart-total">0</span>
+  </button>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+let allItems = [];
+let currentFilter = 'All';
+const socket = io();
+
+// Join user room for live updates
+(async () => {
+  const user = await User.get();
+  if (user) socket.emit('user_join', { username: user.username });
+})();
+
+// Real-time menu sold-out sync
+socket.on('menu_update', ({ id, available }) => {
+  const item = allItems.find(i => i.id === id);
+  if (item) { item.available = available; renderMenu(); }
+  Toast.show(available ? '✅ Item is back!' : '❌ Item sold out', available ? 'success' : 'warning');
+});
+
+// Live clock
+function updateClock() {
+  const now = new Date();
+  const h = now.getHours();
+  document.getElementById('live-clock').textContent =
+    now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+  const greetings = ['night','morning','morning','morning','afternoon','afternoon','evening','evening'];
+  document.getElementById('time-greeting').textContent = greetings[Math.floor(h / 3)] || 'day';
+}
+updateClock(); setInterval(updateClock, 10000);
+
+// Load recommendations
+async function loadRecs() {
+  try {
+    const recs = await API.get('/api/recommendations');
+    const el = document.getElementById('rec-cards');
+    el.innerHTML = recs.map(item => `
+      <div class="rec-card" onclick="addToCartById(${item.id})">
+        <span class="rec-badge">⭐ ${item.rating}</span>
+        <div class="rec-card-emoji">${item.emoji}</div>
+        <div class="rec-card-name">${item.name}</div>
+        <div class="rec-card-price">${fmt.currency(item.price)}</div>
+      </div>
+    `).join('');
+  } catch(e) { console.error(e); }
+}
+
+// Load full menu
+async function loadMenu() {
+  try {
+    allItems = await API.get('/api/menu');
+    renderMenu();
+    // Load queue wait time
+    const queue = await API.get('/api/orders/queue');
+    const waitEl = document.getElementById('wait-info');
+    waitEl.textContent = queue.length > 0
+      ? `⏱ ~${Math.max(5, queue.length * 3)} min wait · ${queue.length} orders ahead`
+      : '⚡ No queue — order now!';
+  } catch(e) { console.error(e); }
+}
+
+function getCartQty(id) {
+  const cart = Cart.get();
+  const item = cart.find(i => i.id === id);
+  return item ? item.qty : 0;
+}
+
+function renderMenu() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  let filtered = allItems.filter(item =>
+    (currentFilter === 'All' || item.category === currentFilter) &&
+    item.name.toLowerCase().includes(search)
+  );
+  const grid = document.getElementById('menu-grid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-state-icon">🔍</div><div class="empty-state-title">Nothing found</div><div class="empty-state-text">Try a different filter</div></div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(item => {
+    const qty = getCartQty(item.id);
+    const stars = '★'.repeat(Math.round(item.rating)) + '☆'.repeat(5-Math.round(item.rating));
+    return `
+    <div class="menu-card ${!item.available ? 'unavailable' : ''}" id="card-${item.id}">
+      ${!item.available ? '<span class="sold-out-tag">Sold Out</span>' : ''}
+      <div class="menu-card-top">
+        <span class="menu-emoji">${item.emoji}</span>
+      </div>
+      <div class="menu-name">${item.name}</div>
+      <div class="menu-cat">${item.category}</div>
+      <div class="menu-rating">${stars} <span style="color:var(--text3)">(${item.ratings_count})</span></div>
+      <div class="cook-time">⏱ ${item.cook_time} min cook time</div>
+      <div style="height:10px"></div>
+      <div class="menu-footer">
+        <div class="menu-price">${fmt.currency(item.price)}</div>
+        ${item.available
+          ? qty > 0
+            ? `<div class="qty-controls">
+                <button class="qty-btn" onclick="changeQty(${item.id},-1)">−</button>
+                <span class="qty-val" id="qty-${item.id}">${qty}</span>
+                <button class="qty-btn" onclick="changeQty(${item.id},1)">+</button>
+               </div>`
+            : `<button class="add-btn" onclick="addToCartById(${item.id})" id="add-btn-${item.id}">+</button>`
+          : `<span style="font-size:12px;color:var(--text3)">Unavailable</span>`
+        }
+      </div>
+    </div>`;
+  }).join('');
+  updateFloatCart();
+}
+
+function addToCartById(id) {
+  const item = allItems.find(i => i.id === id);
+  if (!item || !item.available) return;
+  Cart.add(item);
+  renderMenu();
+}
+
+function changeQty(id, delta) {
+  const qty = getCartQty(id) + delta;
+  if (qty <= 0) Cart.remove(id);
+  else Cart.updateQty(id, qty);
+  renderMenu();
+}
+
+function setFilter(cat, btn) {
+  currentFilter = cat;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMenu();
+}
+
+function filterMenu() { renderMenu(); }
+
+function updateFloatCart() {
+  const count = Cart.count();
+  const total = Cart.total();
+  const fc = document.getElementById('float-cart');
+  if (count > 0) {
+    fc.style.display = 'block';
+    document.getElementById('float-cart-count').textContent = count;
+    document.getElementById('float-cart-total').textContent = total;
+  } else {
+    fc.style.display = 'none';
+  }
+}
+
+async function logout() {
+  await API.post('/api/logout', {});
+  window.location.href = '/';
+}
+
+loadRecs();
+loadMenu();
+</script>
+</body>
+</html>

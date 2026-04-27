@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Stock Manager</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .admin-sidebar { position:fixed; left:0; top:64px; bottom:0; width:220px; background:var(--surface); border-right:1.5px solid var(--border); padding:16px 12px; z-index:50; }
+  .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--radius-sm); text-decoration:none; color:var(--text2); font-size:13px; font-weight:500; margin-bottom:4px; transition:all 0.2s; }
+  .sidebar-link:hover, .sidebar-link.active { background:var(--primary-light); color:var(--primary); }
+  .admin-content { margin-left:220px; padding:24px; }
+  .stock-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:14px; }
+  .stock-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); padding:16px; transition:all 0.2s; }
+  .stock-card.unavailable { opacity:0.65; border-style:dashed; }
+  .stock-top { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .stock-emoji { font-size:36px; }
+  .stock-name { font-size:14px; font-weight:600; }
+  .stock-cat { font-size:11px; color:var(--text3); }
+  .stock-price { font-size:16px; font-weight:800; color:var(--primary); }
+  .stock-toggle { display:flex; align-items:center; justify-content:space-between; margin-top:12px; }
+  .toggle-switch { position:relative; width:46px; height:26px; }
+  .toggle-switch input { opacity:0; width:0; height:0; }
+  .toggle-slider { position:absolute; inset:0; background:#CBD5E1; border-radius:26px; cursor:pointer; transition:all 0.3s; }
+  .toggle-slider::after { content:''; position:absolute; width:20px; height:20px; background:white; border-radius:50%; top:3px; left:3px; transition:all 0.3s; box-shadow:0 1px 4px rgba(0,0,0,0.2); }
+  .toggle-switch input:checked + .toggle-slider { background:var(--success); }
+  .toggle-switch input:checked + .toggle-slider::after { left:23px; }
+  .stock-status-text { font-size:12px; font-weight:600; }
+  .stock-status-text.on { color:var(--success); }
+  .stock-status-text.off { color:var(--danger); }
+  .broadcast-bar { background:var(--teal-light); border:1px solid var(--teal); border-radius:var(--radius); padding:14px 18px; margin-bottom:20px; display:flex; align-items:center; gap:12px; }
+  @media (max-width:900px) { .admin-sidebar { display:none; } .admin-content { margin-left:0; } }
+</style>
+</head>
+<body>
+<nav class="nav" style="background:var(--teal)">
+  <a href="/admin" class="nav-brand" style="color:white">🍽 Canteen<span style="color:#A7F3D0">Order</span> Admin</a>
+</nav>
+<aside class="admin-sidebar">
+  <a href="/admin" class="sidebar-link">📊 Dashboard</a>
+  <a href="/admin/menu-manager" class="sidebar-link">🍽 Menu Manager</a>
+  <a href="/admin/stock" class="sidebar-link active">📦 Stock Manager</a>
+  <a href="/admin/reports" class="sidebar-link">📄 Reports</a>
+</aside>
+
+<div class="admin-content">
+  <div class="page-header">
+    <h1 class="page-title">📦 Stock Manager</h1>
+    <p class="page-subtitle">Toggle availability — syncs instantly to all student menus</p>
+  </div>
+
+  <div class="broadcast-bar">
+    <span style="font-size:20px">⚡</span>
+    <div>
+      <div style="font-size:13px;font-weight:600;color:var(--teal)">Real-time sync active</div>
+      <div style="font-size:12px;color:var(--text2)">Changes broadcast instantly via Socket.io to all connected students</div>
+    </div>
+    <button class="btn btn-teal btn-sm" style="margin-left:auto" onclick="markAllAvailable()">✅ Mark All Available</button>
+  </div>
+
+  <div class="stock-grid" id="stock-grid">
+    <div class="spinner"></div>
+  </div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+const socket = io();
+let menuItems = [];
+
+socket.on('menu_update', ({ id, available }) => {
+  const item = menuItems.find(i => i.id === id);
+  if (item) { item.available = available; renderStock(); }
+});
+
+async function loadStock() {
+  menuItems = await API.get('/api/menu');
+  renderStock();
+}
+
+function renderStock() {
+  const el = document.getElementById('stock-grid');
+  el.innerHTML = menuItems.map(item => `
+    <div class="stock-card ${!item.available ? 'unavailable' : ''}" id="scard-${item.id}">
+      <div class="stock-top">
+        <span class="stock-emoji">${item.emoji}</span>
+        <div>
+          <div class="stock-name">${item.name}</div>
+          <div class="stock-cat">${item.category}</div>
+        </div>
+      </div>
+      <div class="stock-price">${fmt.currency(item.price)}</div>
+      <div style="font-size:12px;color:var(--text2);margin:6px 0">⏱ ${item.cook_time} min · ⭐ ${item.rating} (${item.ratings_count})</div>
+      <div class="stock-toggle">
+        <span class="stock-status-text ${item.available ? 'on' : 'off'}">${item.available ? '✅ Available' : '❌ Sold Out'}</span>
+        <label class="toggle-switch">
+          <input type="checkbox" ${item.available ? 'checked' : ''} onchange="toggleItem(${item.id})">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function toggleItem(id) {
+  const res = await API.put(`/api/menu/${id}/availability`, {});
+  const item = menuItems.find(i => i.id === id);
+  if (item) item.available = res.item.available;
+  renderStock();
+  Toast.show(res.item.available ? '✅ Item marked available' : '❌ Item marked sold out', res.item.available ? 'success' : 'warning');
+}
+
+async function markAllAvailable() {
+  for (const item of menuItems) {
+    if (!item.available) await API.put(`/api/menu/${item.id}/availability`, {});
+  }
+  await loadStock();
+  Toast.show('✅ All items marked available', 'success');
+}
+
+loadStock();
+</script>
+</body>
+</html>

@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Cart</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .cart-layout { display: grid; grid-template-columns: 1fr 340px; gap: 20px; align-items: start; }
+  .cart-item {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 0; border-bottom: 1px solid var(--border);
+  }
+  .cart-item:last-child { border-bottom: none; }
+  .cart-emoji { font-size: 32px; }
+  .cart-item-info { flex: 1; }
+  .cart-item-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .cart-item-price { font-size: 13px; color: var(--text2); }
+  .cart-qty { display: flex; align-items: center; gap: 8px; }
+  .qty-btn {
+    width: 30px; height: 30px; border-radius: 8px;
+    border: 1.5px solid var(--border); background: var(--surface2);
+    font-size: 16px; cursor: pointer; transition: all 0.15s;
+  }
+  .qty-btn:hover { border-color: var(--primary); }
+  .cart-item-total { font-size: 15px; font-weight: 700; color: var(--primary); min-width: 50px; text-align: right; }
+  .remove-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: var(--text3); padding: 4px; }
+  .remove-btn:hover { color: var(--danger); }
+
+  .summary-card { position: sticky; top: 80px; }
+  .summary-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 14px; }
+  .summary-total { font-size: 18px; font-weight: 800; color: var(--primary); }
+  .wallet-row {
+    background: var(--teal-light); border-radius: var(--radius-sm);
+    padding: 12px 14px; margin: 14px 0;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .wallet-label { font-size: 13px; font-weight: 600; color: var(--teal); }
+  .wallet-bal { font-size: 15px; font-weight: 700; color: var(--teal); }
+  .payment-toggle { display: flex; gap: 8px; margin: 12px 0; }
+  .pay-option {
+    flex: 1; padding: 10px; border: 2px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer; text-align: center;
+    font-size: 13px; font-weight: 500; transition: all 0.2s;
+    background: var(--surface);
+  }
+  .pay-option.selected { border-color: var(--primary); background: var(--primary-light); color: var(--primary); }
+  .wait-estimate {
+    background: var(--primary-light); border-radius: var(--radius-sm);
+    padding: 12px 14px; margin-bottom: 14px; text-align: center;
+  }
+  .wait-num { font-size: 28px; font-weight: 800; color: var(--primary); font-family: 'Baloo 2', cursive; }
+  .wait-label { font-size: 12px; color: var(--text2); }
+
+  .points-row {
+    background: #FFF8E1; border-radius: var(--radius-sm);
+    padding: 12px 14px; margin: 10px 0; display: flex;
+    align-items: center; justify-content: space-between;
+  }
+  .group-link-box {
+    background: var(--surface2); border: 1px dashed var(--border);
+    border-radius: var(--radius-sm); padding: 12px; margin-bottom: 14px;
+    font-size: 12px; color: var(--text2); word-break: break-all;
+  }
+
+  @media (max-width: 768px) {
+    .cart-layout { grid-template-columns: 1fr; }
+    .summary-card { position: static; }
+  }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="/menu" class="nav-brand">🍽 Canteen<span>Order</span></a>
+  <div class="nav-links">
+    <a href="/menu" class="nav-link">Menu</a>
+    <a href="/orders" class="nav-link">My Orders</a>
+    <a href="/wallet" class="nav-link">Wallet</a>
+  </div>
+  <span class="nav-wallet-badge">₹<span class="nav-wallet">—</span></span>
+  <span class="nav-points-badge">⭐ <span class="nav-points">—</span></span>
+</nav>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-items">
+    <a href="/menu" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>Menu</a>
+    <a href="/orders" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Orders</a>
+    <a href="/cart" class="bottom-nav-item active" style="position:relative"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>Cart</a>
+    <a href="/wallet" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Wallet</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="page-header">
+    <h1 class="page-title">🛒 Your Cart</h1>
+    <p class="page-subtitle">Review your order before checkout</p>
+  </div>
+
+  <div class="cart-layout">
+    <!-- CART ITEMS -->
+    <div>
+      <div class="card">
+        <div id="cart-items-list"></div>
+      </div>
+
+      <!-- GROUP ORDER -->
+      <div class="card" style="margin-top:16px">
+        <div class="section-title">👥 Group Order</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Create a shared cart and let friends add their items</p>
+        <div id="group-link-area"></div>
+        <button class="btn btn-outline btn-sm" onclick="createGroupCart()">Create Group Cart</button>
+      </div>
+
+      <!-- TIFFIN SUBSCRIPTION -->
+      <div class="card" style="margin-top:16px">
+        <div class="section-title">📅 Subscribe as Daily Tiffin</div>
+        <p style="font-size:13px;color:var(--text2);margin-bottom:12px">Auto-order these items every weekday at lunch</p>
+        <button class="btn btn-ghost btn-sm" onclick="subscribeTiffin()">🔄 Subscribe Mon–Fri</button>
+      </div>
+    </div>
+
+    <!-- ORDER SUMMARY -->
+    <div class="card summary-card">
+      <div class="section-title">Order Summary</div>
+
+      <div class="wait-estimate">
+        <div class="wait-num" id="wait-min">~8</div>
+        <div class="wait-label">estimated minutes</div>
+      </div>
+
+      <div id="summary-rows"></div>
+      <div class="divider"></div>
+      <div class="summary-row">
+        <span style="font-weight:600">Total</span>
+        <span class="summary-total" id="grand-total">₹0</span>
+      </div>
+
+      <div class="points-row">
+        <span style="font-size:13px;font-weight:600;color:#B45309">⭐ You'll earn</span>
+        <span style="font-size:14px;font-weight:700;color:#B45309" id="points-earn">0 points</span>
+      </div>
+
+      <div class="wallet-row">
+        <span class="wallet-label">💳 Wallet Balance</span>
+        <span class="wallet-bal">₹<span id="wallet-bal-display">—</span></span>
+      </div>
+
+      <div class="payment-toggle">
+        <div class="pay-option selected" id="pay-wallet" onclick="selectPay('wallet')">💳 Wallet</div>
+        <div class="pay-option" id="pay-counter" onclick="selectPay('counter')">🪙 Counter</div>
+      </div>
+
+      <button class="btn btn-primary btn-full btn-lg" onclick="placeOrder()" id="order-btn">
+        Place Order →
+      </button>
+
+      <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px">
+        Collect at counter with your token number
+      </p>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script>
+let useWallet = true;
+let userData = null;
+
+async function initCart() {
+  userData = await User.get();
+  if (userData) {
+    document.getElementById('wallet-bal-display').textContent = userData.wallet;
+    document.querySelectorAll('.nav-wallet').forEach(el => el.textContent = userData.wallet);
+    document.querySelectorAll('.nav-points').forEach(el => el.textContent = `${userData.points} pts`);
+  }
+  renderCart();
+  loadWaitTime();
+}
+
+async function loadWaitTime() {
+  try {
+    const queue = await API.get('/api/orders/queue');
+    const cartItems = Cart.get();
+    const maxCook = cartItems.length ? Math.max(...cartItems.map(i => 5)) : 5;
+    const wait = maxCook + queue.length * 2;
+    document.getElementById('wait-min').textContent = `~${wait}`;
+  } catch(e) {}
+}
+
+function renderCart() {
+  const items = Cart.get();
+  const listEl = document.getElementById('cart-items-list');
+  const summEl = document.getElementById('summary-rows');
+  const total = Cart.total();
+
+  if (!items.length) {
+    listEl.innerHTML = `<div class="empty-state"><div class="empty-state-icon">🛒</div><div class="empty-state-title">Cart is empty</div><div class="empty-state-text"><a href="/menu" class="btn btn-primary" style="margin-top:12px">Browse Menu</a></div></div>`;
+    summEl.innerHTML = '';
+    document.getElementById('grand-total').textContent = '₹0';
+    document.getElementById('points-earn').textContent = '0 points';
+    document.getElementById('order-btn').disabled = true;
+    return;
+  }
+
+  listEl.innerHTML = items.map(item => `
+    <div class="cart-item">
+      <span class="cart-emoji">${item.emoji || '🍽'}</span>
+      <div class="cart-item-info">
+        <div class="cart-item-name">${item.name}</div>
+        <div class="cart-item-price">${fmt.currency(item.price)} each</div>
+      </div>
+      <div class="cart-qty">
+        <button class="qty-btn" onclick="updateQty(${item.id}, ${item.qty - 1})">−</button>
+        <span style="font-size:15px;font-weight:700;min-width:20px;text-align:center">${item.qty}</span>
+        <button class="qty-btn" onclick="updateQty(${item.id}, ${item.qty + 1})">+</button>
+      </div>
+      <div class="cart-item-total">${fmt.currency(item.price * item.qty)}</div>
+      <button class="remove-btn" onclick="removeItem(${item.id})">🗑</button>
+    </div>
+  `).join('');
+
+  summEl.innerHTML = items.map(item => `
+    <div class="summary-row">
+      <span style="color:var(--text2)">${item.name} ×${item.qty}</span>
+      <span>${fmt.currency(item.price * item.qty)}</span>
+    </div>
+  `).join('');
+
+  document.getElementById('grand-total').textContent = fmt.currency(total);
+  document.getElementById('points-earn').textContent = `${Math.floor(total * 0.1)} points`;
+  document.getElementById('order-btn').disabled = false;
+}
+
+function updateQty(id, qty) {
+  if (qty <= 0) Cart.remove(id);
+  else Cart.updateQty(id, qty);
+  renderCart();
+}
+
+function removeItem(id) {
+  Cart.remove(id);
+  renderCart();
+  Toast.show('Item removed', 'warning');
+}
+
+function selectPay(method) {
+  useWallet = method === 'wallet';
+  document.getElementById('pay-wallet').classList.toggle('selected', useWallet);
+  document.getElementById('pay-counter').classList.toggle('selected', !useWallet);
+}
+
+async function placeOrder() {
+  const items = Cart.get();
+  if (!items.length) return;
+  const btn = document.getElementById('order-btn');
+  btn.textContent = 'Placing order...'; btn.disabled = true;
+
+  try {
+    const res = await API.post('/api/order', {
+      items: items.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })),
+      use_wallet: useWallet
+    });
+    if (res.success) {
+      Cart.clear();
+      Toast.show(`🎉 Order placed! Token: ${res.order.token}`, 'success', 5000);
+      setTimeout(() => window.location.href = '/orders', 1500);
+    } else {
+      Toast.show(res.error || 'Order failed', 'error');
+      btn.textContent = 'Place Order →'; btn.disabled = false;
+    }
+  } catch(e) {
+    Toast.show('Error placing order', 'error');
+    btn.textContent = 'Place Order →'; btn.disabled = false;
+  }
+}
+
+async function createGroupCart() {
+  try {
+    const res = await API.post('/api/group-cart', {});
+    const link = `${window.location.origin}/menu?group=${res.group_id}`;
+    document.getElementById('group-link-area').innerHTML = `
+      <div class="group-link-box">
+        <strong>Share this link:</strong><br>${link}
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="navigator.clipboard.writeText('${link}');Toast.show('Link copied!','success')">Copy Link</button>
+      </div>`;
+    Toast.show('Group cart created!', 'success');
+  } catch(e) { Toast.show('Error creating group cart', 'error'); }
+}
+
+async function subscribeTiffin() {
+  const items = Cart.get();
+  if (!items.length) { Toast.show('Add items first', 'warning'); return; }
+  try {
+    await API.post('/api/subscribe', { items: items.map(i => ({ id: i.id, name: i.name, price: i.price, qty: i.qty })) });
+    Toast.show('📅 Tiffin subscription activated!', 'success');
+  } catch(e) { Toast.show('Error subscribing', 'error'); }
+}
+
+initCart();
+</script>
+</body>
+</html>

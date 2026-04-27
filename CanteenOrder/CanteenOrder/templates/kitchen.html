@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Kitchen Display</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  body { background: #0A1628; color: white; }
+  .kitchen-nav {
+    background: #111C30; border-bottom: 1px solid #1E2D45;
+    padding: 0 24px; height: 64px; display: flex; align-items: center;
+    justify-content: space-between;
+  }
+  .kitchen-brand { font-family: 'Baloo 2', cursive; font-size: 22px; font-weight: 800; color: #FF6B2B; }
+  .kitchen-time { font-size: 28px; font-weight: 700; font-family: 'Baloo 2', cursive; color: white; }
+  .live-dot { width: 10px; height: 10px; background: #22C55E; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; margin-right: 6px; }
+  .queue-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; padding: 20px 24px; }
+  .stat-box { background: #111C30; border: 1px solid #1E2D45; border-radius: 14px; padding: 16px; text-align: center; }
+  .stat-box-val { font-size: 36px; font-weight: 800; font-family: 'Baloo 2', cursive; }
+  .stat-box-val.orange { color: #FF6B2B; }
+  .stat-box-val.yellow { color: #F59E0B; }
+  .stat-box-val.green { color: #22C55E; }
+  .stat-box-val.blue { color: #3B82F6; }
+  .stat-box-label { font-size: 12px; color: #94A3B8; margin-top: 4px; font-weight: 500; }
+  .orders-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; padding: 0 24px 24px; }
+  .kitchen-card {
+    background: #111C30; border: 1.5px solid #1E2D45;
+    border-radius: 16px; padding: 18px; transition: all 0.3s;
+    animation: slideIn 0.4s ease;
+  }
+  @keyframes slideIn { from { opacity:0; transform: translateY(-16px); } to { opacity:1; transform: translateY(0); } }
+  .kitchen-card.status-placed { border-color: #3B82F6; }
+  .kitchen-card.status-confirmed { border-color: #F59E0B; }
+  .kitchen-card.status-cooking { border-color: #FF6B2B; box-shadow: 0 0 20px rgba(255,107,43,0.2); }
+  .kitchen-card.status-ready { border-color: #22C55E; background: #0A2A15; box-shadow: 0 0 24px rgba(34,197,94,0.25); }
+  .kcard-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .kcard-token { font-size: 36px; font-weight: 900; color: #FF6B2B; font-family: 'Baloo 2', cursive; }
+  .kcard-time { font-size: 12px; color: #94A3B8; text-align: right; }
+  .kcard-items { margin-bottom: 14px; }
+  .kcard-item { display: flex; justify-content: space-between; padding: 7px 0; border-bottom: 1px solid #1E2D45; font-size: 14px; }
+  .kcard-item:last-child { border-bottom: none; }
+  .kcard-item-qty { font-weight: 700; color: #FF6B2B; }
+  .kcard-actions { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+  .kaction-btn {
+    padding: 8px 4px; border-radius: 8px; border: 1px solid;
+    cursor: pointer; font-size: 11px; font-weight: 700;
+    font-family: 'Sora', sans-serif; transition: all 0.2s; text-align: center;
+  }
+  .kaction-btn.confirm { border-color: #F59E0B; color: #F59E0B; background: rgba(245,158,11,0.1); }
+  .kaction-btn.confirm:hover { background: rgba(245,158,11,0.25); }
+  .kaction-btn.cook { border-color: #FF6B2B; color: #FF6B2B; background: rgba(255,107,43,0.1); }
+  .kaction-btn.cook:hover { background: rgba(255,107,43,0.25); }
+  .kaction-btn.ready { border-color: #22C55E; color: #22C55E; background: rgba(34,197,94,0.1); }
+  .kaction-btn.ready:hover { background: rgba(34,197,94,0.25); }
+  .kcard-elapsed { font-size: 11px; color: #64748B; margin-top: 10px; }
+  .kcard-elapsed span { color: #F59E0B; font-weight: 600; }
+  .empty-kitchen { text-align: center; padding: 80px 20px; color: #64748B; }
+  .empty-kitchen-icon { font-size: 64px; margin-bottom: 16px; }
+  .section-heading { padding: 8px 24px 4px; font-size: 12px; font-weight: 600; color: #64748B; letter-spacing: 0.06em; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div class="kitchen-nav">
+  <div class="kitchen-brand">👨‍🍳 Kitchen Display</div>
+  <div style="display:flex;align-items:center;gap:16px">
+    <span style="font-size:13px;color:#94A3B8"><span class="live-dot"></span>LIVE</span>
+    <div class="kitchen-time" id="kitchen-clock">--:--</div>
+  </div>
+</div>
+
+<div class="queue-stats">
+  <div class="stat-box">
+    <div class="stat-box-val blue" id="stat-new">0</div>
+    <div class="stat-box-label">New Orders</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-box-val yellow" id="stat-cooking">0</div>
+    <div class="stat-box-label">Being Cooked</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-box-val green" id="stat-ready">0</div>
+    <div class="stat-box-label">Ready Today</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-box-val orange" id="stat-total">0</div>
+    <div class="stat-box-label">Total Today</div>
+  </div>
+</div>
+
+<div class="section-heading">🔴 Active Queue</div>
+<div class="orders-grid" id="kitchen-queue"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+const socket = io();
+socket.emit('kitchen_join');
+
+socket.on('new_order', () => loadQueue());
+socket.on('order_update', () => loadQueue());
+
+// Clock
+function updateClock() {
+  document.getElementById('kitchen-clock').textContent =
+    new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+updateClock(); setInterval(updateClock, 1000);
+
+async function loadQueue() {
+  try {
+    const res = await fetch('/api/orders/queue');
+    const orders = await res.json();
+    const allRes = await fetch('/api/orders');
+    const allOrders = await allRes.json();
+
+    // Update stats
+    document.getElementById('stat-new').textContent = orders.filter(o => o.status === 'placed').length;
+    document.getElementById('stat-cooking').textContent = orders.filter(o => o.status === 'cooking').length;
+    document.getElementById('stat-ready').textContent = allOrders.filter(o => o.status === 'ready').length;
+    document.getElementById('stat-total').textContent = allOrders.length;
+
+    const el = document.getElementById('kitchen-queue');
+    if (!orders.length) {
+      el.innerHTML = `<div class="empty-kitchen" style="grid-column:1/-1">
+        <div class="empty-kitchen-icon">✅</div>
+        <div style="font-size:20px;font-weight:700;color:#22C55E">All clear! No pending orders.</div>
+        <div style="margin-top:8px;font-size:14px">Waiting for new orders...</div>
+      </div>`;
+      return;
+    }
+
+    el.innerHTML = orders.map(order => {
+      const elapsed = Math.floor((Date.now() - new Date(order.placed_at)) / 60000);
+      return `
+      <div class="kitchen-card status-${order.status}" id="kcard-${order.id}">
+        <div class="kcard-header">
+          <div>
+            <div class="kcard-token">${order.token}</div>
+            <div style="font-size:12px;color:#94A3B8">${order.id}</div>
+          </div>
+          <div class="kcard-time">
+            <div style="font-size:11px;margin-bottom:4px">${new Date(order.placed_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</div>
+            <span class="badge" style="background:${statusBg(order.status)};color:${statusColor(order.status)};font-size:10px">
+              ${statusIcon(order.status)} ${order.status.toUpperCase()}
+            </span>
+          </div>
+        </div>
+        <div class="kcard-items">
+          ${order.items.map(item => `
+            <div class="kcard-item">
+              <span>${item.name}</span>
+              <span class="kcard-item-qty">×${item.qty}</span>
+            </div>
+          `).join('')}
+        </div>
+        <div class="kcard-actions">
+          <button class="kaction-btn confirm" onclick="updateStatus('${order.id}','confirmed')">✅ CONFIRM</button>
+          <button class="kaction-btn cook" onclick="updateStatus('${order.id}','cooking')">🔥 COOKING</button>
+          <button class="kaction-btn ready" onclick="updateStatus('${order.id}','ready')">🔔 READY</button>
+        </div>
+        <div class="kcard-elapsed">⏱ Waiting: <span>${elapsed} min</span></div>
+      </div>`;
+    }).join('');
+  } catch(e) { console.error(e); }
+}
+
+function statusBg(s) {
+  return { placed:'rgba(59,130,246,0.2)', confirmed:'rgba(245,158,11,0.2)', cooking:'rgba(255,107,43,0.2)', ready:'rgba(34,197,94,0.2)' }[s] || '#1E2D45';
+}
+function statusColor(s) {
+  return { placed:'#3B82F6', confirmed:'#F59E0B', cooking:'#FF6B2B', ready:'#22C55E' }[s] || '#94A3B8';
+}
+function statusIcon(s) {
+  return { placed:'📋', confirmed:'✅', cooking:'🔥', ready:'🔔' }[s] || '';
+}
+
+async function updateStatus(orderId, status) {
+  await fetch(`/api/order/${orderId}/status`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ status })
+  });
+  loadQueue();
+}
+
+loadQueue();
+setInterval(loadQueue, 15000); // Auto-refresh every 15s
+</script>
+</body>
+</html>

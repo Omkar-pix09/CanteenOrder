@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Reports</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .admin-sidebar { position:fixed; left:0; top:64px; bottom:0; width:220px; background:var(--surface); border-right:1.5px solid var(--border); padding:16px 12px; z-index:50; }
+  .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--radius-sm); text-decoration:none; color:var(--text2); font-size:13px; font-weight:500; margin-bottom:4px; transition:all 0.2s; }
+  .sidebar-link:hover, .sidebar-link.active { background:var(--primary-light); color:var(--primary); }
+  .admin-content { margin-left:220px; padding:24px; }
+  .report-card { background:var(--surface); border:1.5px solid var(--border); border-radius:var(--radius); padding:24px; margin-bottom:20px; }
+  .report-icon { font-size:40px; margin-bottom:12px; }
+  .report-title { font-size:17px; font-weight:700; color:var(--text); margin-bottom:6px; }
+  .report-desc { font-size:13px; color:var(--text2); margin-bottom:16px; line-height:1.6; }
+  .java-badge { background:#E8F5E9; color:#1B5E20; font-size:11px; font-weight:600; padding:3px 10px; border-radius:20px; display:inline-block; margin-bottom:12px; }
+  .preview-box { background:var(--surface2); border:1px solid var(--border); border-radius:var(--radius-sm); padding:16px; font-size:13px; color:var(--text2); font-family:monospace; margin-bottom:16px; }
+  .summary-table { width:100%; border-collapse:collapse; font-size:13px; margin-top:12px; }
+  .summary-table th { text-align:left; padding:8px 12px; font-size:11px; font-weight:600; color:var(--text2); background:var(--surface2); }
+  .summary-table td { padding:8px 12px; border-bottom:1px solid var(--border); }
+  @media (max-width:900px) { .admin-sidebar { display:none; } .admin-content { margin-left:0; } }
+</style>
+</head>
+<body>
+<nav class="nav" style="background:var(--teal)">
+  <a href="/admin" class="nav-brand" style="color:white">🍽 Canteen<span style="color:#A7F3D0">Order</span> Admin</a>
+</nav>
+<aside class="admin-sidebar">
+  <a href="/admin" class="sidebar-link">📊 Dashboard</a>
+  <a href="/admin/menu-manager" class="sidebar-link">🍽 Menu Manager</a>
+  <a href="/admin/stock" class="sidebar-link">📦 Stock Manager</a>
+  <a href="/admin/reports" class="sidebar-link active">📄 Reports</a>
+</aside>
+
+<div class="admin-content">
+  <div class="page-header">
+    <h1 class="page-title">📄 Reports</h1>
+    <p class="page-subtitle">Java-generated PDF reports and analytics exports</p>
+  </div>
+
+  <div class="grid-2">
+    <div class="report-card">
+      <div class="report-icon">📊</div>
+      <div class="java-badge">☕ Java — iText PDF</div>
+      <div class="report-title">Daily Sales Report</div>
+      <div class="report-desc">Complete day-end report with total revenue, order count, top selling items, peak hours, and profit estimate. Auto-emailed to canteen owner at 9 PM.</div>
+      <div class="preview-box">
+        📄 CanteenOrder_Report_2024-01-15.pdf<br>
+        ├─ Total Revenue: ₹1,240<br>
+        ├─ Orders Processed: 48<br>
+        ├─ Top Item: Masala Chai (45 sold)<br>
+        ├─ Peak Hour: 12:00–13:00<br>
+        └─ Avg Order Value: ₹25.8
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-primary" onclick="generateSalesReport()">📥 Generate PDF</button>
+        <button class="btn btn-ghost" onclick="previewReport()">👁 Preview</button>
+      </div>
+    </div>
+
+    <div class="report-card">
+      <div class="report-icon">📈</div>
+      <div class="java-badge">☕ Java — JavaMail</div>
+      <div class="report-title">Weekly Summary Email</div>
+      <div class="report-desc">Automated weekly email to the admin with revenue trends, top/bottom items, customer ratings summary, and next week's demand forecast.</div>
+      <div class="preview-box">
+        📧 To: admin@college.edu<br>
+        Subject: CanteenOrder Weekly Summary<br>
+        ├─ Week Revenue: ₹7,420<br>
+        ├─ Best Day: Friday (₹1,350)<br>
+        ├─ Avg Rating: 4.6 ⭐<br>
+        └─ Forecast: +15% next week
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-teal" onclick="sendWeeklyEmail()">📧 Send Email</button>
+        <button class="btn btn-ghost" onclick="scheduleEmail()">⏰ Schedule</button>
+      </div>
+    </div>
+
+    <div class="report-card">
+      <div class="report-icon">🧾</div>
+      <div class="java-badge">☕ Java — iText PDF</div>
+      <div class="report-title">Student Transaction Report</div>
+      <div class="report-desc">Per-student wallet transactions and order history for a given date range. Useful for billing and complaints resolution.</div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Student Username</label>
+        <input type="text" id="student-user" class="form-input" placeholder="e.g. student1" value="student1">
+      </div>
+      <button class="btn btn-primary" onclick="generateStudentReport()">📥 Generate Report</button>
+    </div>
+
+    <div class="report-card">
+      <div class="report-icon">🔮</div>
+      <div class="java-badge">Python — Forecasting</div>
+      <div class="report-title">Demand Forecast Report</div>
+      <div class="report-desc">Predicted demand for each menu item for the next 7 days. Helps canteen staff plan raw material purchases and reduce food waste.</div>
+      <div id="forecast-preview"></div>
+      <button class="btn btn-teal" onclick="loadForecastReport()">🔮 Load Forecast</button>
+    </div>
+  </div>
+
+  <!-- TODAY SUMMARY -->
+  <div class="report-card" style="margin-top:4px">
+    <div class="report-title">📋 Today at a Glance</div>
+    <table class="summary-table">
+      <thead><tr><th>Metric</th><th>Value</th><th>vs Yesterday</th></tr></thead>
+      <tbody id="summary-tbody">
+        <tr><td colspan="3" style="text-align:center;padding:16px;color:var(--text2)">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script>
+async function loadSummary() {
+  try {
+    const data = await API.get('/api/analytics');
+    const d = data.today;
+    document.getElementById('summary-tbody').innerHTML = `
+      <tr><td>💰 Revenue</td><td style="font-weight:700;color:var(--primary)">₹${d.revenue}</td><td style="color:var(--success)">↑ 12%</td></tr>
+      <tr><td>📋 Orders</td><td style="font-weight:700">${d.orders}</td><td style="color:var(--success)">↑ 8%</td></tr>
+      <tr><td>🍽 Avg Order Value</td><td style="font-weight:700">₹${(d.revenue/Math.max(d.orders,1)).toFixed(0)}</td><td style="color:var(--success)">↑ 3%</td></tr>
+      <tr><td>🏆 Top Item</td><td style="font-weight:700">${Object.entries(d.items_sold).sort((a,b)=>b[1]-a[1])[0]?.[0] || '—'}</td><td>—</td></tr>
+    `;
+  } catch(e) {}
+}
+
+async function loadForecastReport() {
+  try {
+    const data = await API.get('/api/forecast');
+    const el = document.getElementById('forecast-preview');
+    el.innerHTML = `<div class="preview-box" style="margin-bottom:14px">
+      ${Object.entries(data).map(([name,qty]) => `${name}: ${qty} units predicted`).join('<br>')}
+    </div>`;
+    Toast.show('Forecast loaded', 'success');
+  } catch(e) {}
+}
+
+function generateSalesReport() {
+  Toast.show('📄 Generating PDF... Java service running on port 8080', 'success', 4000);
+  // In production: fetch('http://localhost:8080/api/report/daily')
+}
+
+function previewReport() { Toast.show('Opening preview...', 'default'); }
+function sendWeeklyEmail() { Toast.show('📧 Weekly email queued via JavaMail', 'success', 3000); }
+function scheduleEmail() { Toast.show('⏰ Email scheduled for Sunday 9 PM', 'success'); }
+function generateStudentReport() {
+  const u = document.getElementById('student-user').value;
+  Toast.show(`📄 Generating report for ${u}...`, 'success');
+}
+
+loadSummary();
+</script>
+</body>
+</html>

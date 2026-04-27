@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Admin Dashboard</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+  .admin-nav { background: var(--teal); }
+  .admin-nav .nav-brand { color: white; }
+  .admin-nav .nav-link { color: rgba(255,255,255,0.8); }
+  .admin-nav .nav-link:hover, .admin-nav .nav-link.active { background: rgba(255,255,255,0.15); color: white; }
+  .admin-sidebar {
+    position: fixed; left: 0; top: 64px; bottom: 0; width: 220px;
+    background: var(--surface); border-right: 1.5px solid var(--border);
+    padding: 16px 12px; z-index: 50; overflow-y: auto;
+  }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-radius: var(--radius-sm);
+    text-decoration: none; color: var(--text2);
+    font-size: 13px; font-weight: 500; margin-bottom: 4px;
+    transition: all 0.2s;
+  }
+  .sidebar-link:hover, .sidebar-link.active { background: var(--primary-light); color: var(--primary); }
+  .sidebar-link .sl-icon { font-size: 16px; }
+  .admin-content { margin-left: 220px; padding: 24px; min-height: calc(100vh - 64px); }
+  .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 24px; }
+  .stat-hero {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 18px 20px;
+  }
+  .stat-hero-icon { font-size: 28px; margin-bottom: 8px; }
+  .stat-hero-val { font-size: 32px; font-weight: 800; color: var(--primary); font-family: 'Baloo 2', cursive; }
+  .stat-hero-label { font-size: 12px; color: var(--text2); font-weight: 500; }
+  .stat-hero-change { font-size: 11px; color: var(--success); margin-top: 4px; }
+  .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .chart-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 20px; }
+  .chart-title { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 16px; }
+  .orders-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .orders-table th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--text2); background: var(--surface2); border-bottom: 1px solid var(--border); }
+  .orders-table td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .orders-table tr:hover td { background: var(--cream); }
+  .peak-bar-wrap { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .peak-label { font-size: 11px; color: var(--text2); width: 40px; }
+  .peak-bar-track { flex: 1; height: 8px; background: var(--surface2); border-radius: 8px; overflow: hidden; }
+  .peak-bar-fill { height: 100%; background: var(--primary); border-radius: 8px; }
+  .peak-val { font-size: 11px; color: var(--text2); width: 20px; text-align: right; }
+  @media (max-width: 900px) { .admin-sidebar { display: none; } .admin-content { margin-left: 0; } .stats-row { grid-template-columns: repeat(2,1fr); } .charts-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<nav class="nav admin-nav">
+  <a href="/admin" class="nav-brand">🍽 Canteen<span style="color:#A7F3D0">Order</span> <span style="font-size:13px;font-weight:500;opacity:0.8">Admin</span></a>
+  <div class="nav-links">
+    <a href="/kitchen" class="nav-link" target="_blank">👨‍🍳 Kitchen View</a>
+    <a href="/menu" class="nav-link">Student View</a>
+  </div>
+  <button class="btn btn-sm" style="background:rgba(255,255,255,0.15);color:white;border:none;margin-left:auto" onclick="logout()">Logout</button>
+</nav>
+
+<aside class="admin-sidebar">
+  <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;padding:0 8px">Navigation</div>
+  <a href="/admin" class="sidebar-link active"><span class="sl-icon">📊</span> Dashboard</a>
+  <a href="/admin/menu-manager" class="sidebar-link"><span class="sl-icon">🍽</span> Menu Manager</a>
+  <a href="/admin/stock" class="sidebar-link"><span class="sl-icon">📦</span> Stock Manager</a>
+  <a href="/admin/reports" class="sidebar-link"><span class="sl-icon">📄</span> Reports</a>
+  <a href="/kitchen" class="sidebar-link" target="_blank"><span class="sl-icon">👨‍🍳</span> Kitchen Display</a>
+  <div style="height:16px"></div>
+  <div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px;padding:0 8px">Quick Actions</div>
+  <button class="sidebar-link" style="background:var(--primary-light);color:var(--primary);border:none;cursor:pointer;width:100%;text-align:left" onclick="generateReport()">
+    <span class="sl-icon">📥</span> Generate PDF Report
+  </button>
+</aside>
+
+<div class="admin-content">
+  <!-- STATS -->
+  <div style="margin-bottom:20px">
+    <h1 class="page-title">📊 Dashboard</h1>
+    <p class="page-subtitle" id="last-updated">Loading analytics...</p>
+  </div>
+
+  <div class="stats-row" id="stats-row">
+    <div class="stat-hero"><div class="stat-hero-icon">💰</div><div class="stat-hero-val" id="s-revenue">—</div><div class="stat-hero-label">Today's Revenue</div><div class="stat-hero-change">↑ 12% vs yesterday</div></div>
+    <div class="stat-hero"><div class="stat-hero-icon">📋</div><div class="stat-hero-val" id="s-orders">—</div><div class="stat-hero-label">Total Orders</div><div class="stat-hero-change">↑ 8% vs yesterday</div></div>
+    <div class="stat-hero"><div class="stat-hero-icon">🍽</div><div class="stat-hero-val" id="s-menu">—</div><div class="stat-hero-label">Menu Items</div><div class="stat-hero-change" style="color:var(--teal)">Active items</div></div>
+    <div class="stat-hero"><div class="stat-hero-icon">⏱</div><div class="stat-hero-val" id="s-wait">—</div><div class="stat-hero-label">Avg Wait (min)</div><div class="stat-hero-change" style="color:var(--warning)">Current queue</div></div>
+  </div>
+
+  <!-- CHARTS -->
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">📈 Weekly Revenue (₹)</div>
+      <canvas id="weeklyChart" height="200"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">🏆 Top Items Today</div>
+      <canvas id="topItemsChart" height="200"></canvas>
+    </div>
+  </div>
+
+  <div class="charts-grid">
+    <div class="chart-card">
+      <div class="chart-title">⏰ Peak Hours (Orders per hour)</div>
+      <canvas id="peakChart" height="180"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">📦 Tomorrow's Demand Forecast</div>
+      <div id="forecast-list" style="margin-top:8px"></div>
+    </div>
+  </div>
+
+  <!-- RECENT ORDERS TABLE -->
+  <div class="card" style="margin-top:20px">
+    <div class="chart-title">📋 Recent Orders</div>
+    <div style="overflow-x:auto">
+      <table class="orders-table" id="orders-table">
+        <thead><tr>
+          <th>Token</th><th>Order ID</th><th>Items</th><th>Amount</th><th>Status</th><th>Time</th><th>Action</th>
+        </tr></thead>
+        <tbody id="orders-tbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text2)">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script>
+let charts = {};
+
+async function loadDashboard() {
+  try {
+    const [analytics, orders, queue] = await Promise.all([
+      API.get('/api/analytics'),
+      API.get('/api/orders'),
+      API.get('/api/orders/queue')
+    ]);
+
+    // Stats
+    document.getElementById('s-revenue').textContent = `₹${analytics.today.revenue}`;
+    document.getElementById('s-orders').textContent = analytics.today.orders;
+    document.getElementById('s-menu').textContent = analytics.menu.filter(i => i.available).length;
+    document.getElementById('s-wait').textContent = queue.length ? `~${queue.length * 3}` : '0';
+    document.getElementById('last-updated').textContent = `Last updated: ${new Date().toLocaleTimeString('en-IN')}`;
+
+    // Weekly chart
+    const wCtx = document.getElementById('weeklyChart').getContext('2d');
+    if (charts.weekly) charts.weekly.destroy();
+    charts.weekly = new Chart(wCtx, {
+      type: 'bar',
+      data: {
+        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets: [{ label: 'Revenue (₹)', data: analytics.weekly, backgroundColor: '#FF6B2B', borderRadius: 8, borderSkipped: false }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#EDE5D8' } }, x: { grid: { display: false } } } }
+    });
+
+    // Top items doughnut
+    const items = analytics.today.items_sold;
+    const tCtx = document.getElementById('topItemsChart').getContext('2d');
+    if (charts.top) charts.top.destroy();
+    charts.top = new Chart(tCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(items),
+        datasets: [{ data: Object.values(items), backgroundColor: ['#FF6B2B','#0F7B6C','#F59E0B','#3B82F6','#8B5CF6'], borderWidth: 0 }]
+      },
+      options: { responsive: true, cutout: '65%', plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+    });
+
+    // Peak hours
+    const ph = analytics.peak_hours;
+    const pCtx = document.getElementById('peakChart').getContext('2d');
+    if (charts.peak) charts.peak.destroy();
+    charts.peak = new Chart(pCtx, {
+      type: 'line',
+      data: {
+        labels: Object.keys(ph).map(h => `${h}:00`),
+        datasets: [{ label: 'Orders', data: Object.values(ph), borderColor: '#0F7B6C', backgroundColor: 'rgba(15,123,108,0.08)', fill: true, tension: 0.4, borderWidth: 2, pointRadius: 4, pointBackgroundColor: '#0F7B6C' }]
+      },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { grid: { color: '#EDE5D8' } }, x: { grid: { display: false }, ticks: { font: { size: 10 } } } } }
+    });
+
+    // Forecast
+    loadForecast();
+
+    // Orders table
+    const tbody = document.getElementById('orders-tbody');
+    if (!orders.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text2)">No orders yet</td></tr>'; return; }
+    const recent = orders.slice(-15).reverse();
+    tbody.innerHTML = recent.map(o => `
+      <tr>
+        <td style="font-weight:800;color:var(--primary);font-size:16px">${o.token}</td>
+        <td style="font-size:12px;color:var(--text2)">${o.id}</td>
+        <td>${o.items.map(i => `${i.name}×${i.qty}`).join(', ')}</td>
+        <td style="font-weight:700">₹${o.total}</td>
+        <td><span class="badge status-${o.status}">${o.status}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${fmt.time(o.placed_at)}</td>
+        <td>
+          <select onchange="updateOrderStatus('${o.id}',this.value)" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface)">
+            ${['placed','confirmed','cooking','ready','delivered'].map(s => `<option value="${s}" ${o.status===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </td>
+      </tr>
+    `).join('');
+
+  } catch(e) { console.error(e); }
+}
+
+async function loadForecast() {
+  try {
+    const data = await API.get('/api/forecast');
+    const max = Math.max(...Object.values(data));
+    document.getElementById('forecast-list').innerHTML = Object.entries(data).map(([name, qty]) => `
+      <div class="peak-bar-wrap">
+        <span class="peak-label" style="width:100px;font-size:12px">${name}</span>
+        <div class="peak-bar-track"><div class="peak-bar-fill" style="width:${(qty/max*100)}%"></div></div>
+        <span class="peak-val">${qty}</span>
+      </div>
+    `).join('');
+  } catch(e) {}
+}
+
+async function updateOrderStatus(orderId, status) {
+  await API.put(`/api/order/${orderId}/status`, { status });
+  Toast.show(`Order updated to ${status}`, 'success');
+}
+
+function generateReport() {
+  Toast.show('📄 PDF report generated! Check Java service at port 8080', 'success', 4000);
+  window.open('/admin/reports', '_blank');
+}
+
+async function logout() {
+  await API.post('/api/logout', {});
+  window.location.href = '/';
+}
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+</body>
+</html>

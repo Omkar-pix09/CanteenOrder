@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Rate Order</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .rate-hero { text-align:center; padding: 32px 0 24px; }
+  .rate-hero-icon { font-size: 64px; margin-bottom: 12px; }
+  .rate-hero-title { font-size: 24px; font-weight: 800; color: var(--text); }
+  .rate-hero-sub { font-size: 14px; color: var(--text2); margin-top: 6px; }
+  .rate-item-card { background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius); padding: 18px; margin-bottom: 14px; }
+  .rate-item-top { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+  .rate-item-emoji { font-size: 36px; }
+  .rate-item-name { font-size: 15px; font-weight: 600; }
+  .stars { display: flex; gap: 8px; }
+  .star-btn {
+    font-size: 30px; cursor: pointer; transition: all 0.15s;
+    color: #D1D5DB; background: none; border: none; padding: 4px;
+    line-height: 1;
+  }
+  .star-btn.active { color: #F59E0B; transform: scale(1.15); }
+  .star-btn:hover { transform: scale(1.2); }
+  .rate-comment { margin-top: 12px; }
+  .overall-feel { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin: 20px 0; }
+  .feel-btn {
+    padding: 16px; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    cursor: pointer; text-align: center; transition: all 0.2s;
+    background: var(--surface); font-family: 'Sora', sans-serif;
+  }
+  .feel-btn.selected { border-color: var(--primary); background: var(--primary-light); }
+  .feel-emoji { font-size: 28px; }
+  .feel-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-top: 4px; }
+  .submit-section { text-align: center; padding: 20px 0; }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="/menu" class="nav-brand">🍽 Canteen<span>Order</span></a>
+  <a href="/orders" class="btn btn-ghost btn-sm" style="margin-left:auto">← Back to Orders</a>
+</nav>
+
+<div class="page-wrap" style="max-width:600px">
+  <div class="rate-hero">
+    <div class="rate-hero-icon">⭐</div>
+    <div class="rate-hero-title">Rate Your Order</div>
+    <div class="rate-hero-sub">Your feedback helps improve our canteen!</div>
+  </div>
+
+  <div id="rate-items"></div>
+
+  <div class="card">
+    <div class="section-title">Overall Experience</div>
+    <div class="overall-feel">
+      <div class="feel-btn" onclick="selectFeel('bad',this)">
+        <div class="feel-emoji">😞</div>
+        <div class="feel-label">Needs Work</div>
+      </div>
+      <div class="feel-btn" onclick="selectFeel('ok',this)">
+        <div class="feel-emoji">😊</div>
+        <div class="feel-label">Good</div>
+      </div>
+      <div class="feel-btn" onclick="selectFeel('great',this)">
+        <div class="feel-emoji">🤩</div>
+        <div class="feel-label">Excellent!</div>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Any comments?</label>
+      <textarea id="overall-comment" class="form-input" rows="3" placeholder="Tell us what you loved or what we can improve..."></textarea>
+    </div>
+  </div>
+
+  <div class="submit-section">
+    <button class="btn btn-primary btn-lg" onclick="submitRating()" id="submit-btn">
+      Submit Rating ⭐
+    </button>
+    <p style="font-size:12px;color:var(--text3);margin-top:10px">You earn bonus points for rating!</p>
+  </div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script>
+const orderId = window.location.pathname.split('/').pop();
+let order = null;
+let selectedFeel = null;
+const itemRatings = {};
+
+async function loadOrder() {
+  try {
+    const orders = await API.get('/api/orders');
+    order = orders.find(o => o.id === orderId);
+    if (!order) { document.getElementById('rate-items').innerHTML = '<p style="color:var(--danger)">Order not found</p>'; return; }
+    renderItems();
+  } catch(e) {}
+}
+
+function renderItems() {
+  const el = document.getElementById('rate-items');
+  el.innerHTML = order.items.map(item => `
+    <div class="rate-item-card">
+      <div class="rate-item-top">
+        <span class="rate-item-emoji">${item.emoji || '🍽'}</span>
+        <span class="rate-item-name">${item.name}</span>
+      </div>
+      <div class="stars" id="stars-${item.id}">
+        ${[1,2,3,4,5].map(n => `
+          <button class="star-btn" onclick="setRating(${item.id}, ${n})" data-val="${n}">★</button>
+        `).join('')}
+      </div>
+    </div>
+  `).join('');
+}
+
+function setRating(itemId, val) {
+  itemRatings[itemId] = val;
+  const stars = document.querySelectorAll(`#stars-${itemId} .star-btn`);
+  stars.forEach(s => {
+    const sVal = parseInt(s.dataset.val);
+    s.classList.toggle('active', sVal <= val);
+  });
+}
+
+function selectFeel(feel, btn) {
+  selectedFeel = feel;
+  document.querySelectorAll('.feel-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+
+async function submitRating() {
+  if (!Object.keys(itemRatings).length) { Toast.show('Please rate at least one item', 'warning'); return; }
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = 'Submitting...'; btn.disabled = true;
+  try {
+    const res = await API.post('/api/rate', { order_id: orderId, ratings: itemRatings });
+    if (res.success) {
+      Toast.show('🎉 Thank you for your feedback! +5 bonus points', 'success', 4000);
+      setTimeout(() => window.location.href = '/orders', 2000);
+    }
+  } catch(e) { Toast.show('Error submitting', 'error'); btn.textContent = 'Submit Rating ⭐'; btn.disabled = false; }
+}
+
+loadOrder();
+</script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — My Orders</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .order-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 18px; margin-bottom: 14px;
+    transition: all 0.3s;
+  }
+  .order-card.status-ready { border-color: var(--success); background: #F0FDF4; }
+  .order-card.status-cooking { border-color: var(--warning); }
+  .order-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .order-token {
+    font-size: 28px; font-weight: 800; color: var(--primary);
+    font-family: 'Baloo 2', cursive;
+  }
+  .order-id { font-size: 12px; color: var(--text3); }
+  .order-time { font-size: 12px; color: var(--text2); }
+
+  .status-track { display: flex; align-items: center; margin: 16px 0; }
+  .status-step {
+    flex: 1; text-align: center; position: relative;
+  }
+  .status-step::after {
+    content: ''; position: absolute;
+    top: 16px; left: 50%; width: 100%; height: 2px;
+    background: var(--border); z-index: 0;
+  }
+  .status-step:last-child::after { display: none; }
+  .step-dot {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface2); border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; margin: 0 auto 6px; position: relative; z-index: 1;
+    transition: all 0.4s;
+  }
+  .step-dot.done { background: var(--success); border-color: var(--success); }
+  .step-dot.active { background: var(--primary); border-color: var(--primary); animation: pulse 1.5s infinite; }
+  .step-label { font-size: 10px; font-weight: 500; color: var(--text2); }
+  .step-label.active { color: var(--primary); font-weight: 700; }
+  .step-label.done { color: var(--success); }
+
+  .order-items { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .order-item-chip {
+    background: var(--surface2); border-radius: 20px;
+    padding: 5px 12px; font-size: 12px; font-weight: 500;
+  }
+  .order-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  .order-total { font-size: 16px; font-weight: 700; color: var(--primary); }
+  .countdown-box {
+    background: var(--primary-light); border-radius: var(--radius-sm);
+    padding: 8px 14px; text-align: center; margin: 10px 0;
+  }
+  .countdown-val { font-size: 24px; font-weight: 800; color: var(--primary); font-family: 'Baloo 2', cursive; }
+  .countdown-label { font-size: 11px; color: var(--text2); }
+  .ready-banner {
+    background: var(--success); color: white; border-radius: var(--radius-sm);
+    padding: 12px; text-align: center; font-weight: 700; font-size: 15px;
+    animation: pulse 1s infinite;
+  }
+  .points-earned-chip {
+    background: #FEF3C7; color: #92400E;
+    font-size: 12px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+  }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="/menu" class="nav-brand">🍽 Canteen<span>Order</span></a>
+  <div class="nav-links">
+    <a href="/menu" class="nav-link">Menu</a>
+    <a href="/orders" class="nav-link active">My Orders</a>
+    <a href="/wallet" class="nav-link">Wallet</a>
+  </div>
+  <span class="nav-wallet-badge">₹<span class="nav-wallet">—</span></span>
+  <span class="nav-points-badge">⭐ <span class="nav-points">—</span></span>
+</nav>
+
+<nav class="bottom-nav">
+  <div class="bottom-nav-items">
+    <a href="/menu" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>Menu</a>
+    <a href="/orders" class="bottom-nav-item active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>Orders</a>
+    <a href="/cart" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>Cart</a>
+    <a href="/wallet" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Wallet</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="page-header" style="display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <h1 class="page-title">📋 My Orders</h1>
+      <p class="page-subtitle">Live order tracking — updates in real time</p>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="loadOrders()">↻ Refresh</button>
+  </div>
+
+  <div id="orders-list"><div class="spinner"></div></div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+const socket = io();
+let userData = null;
+
+const steps = [
+  { key: 'placed',    icon: '📋', label: 'Placed' },
+  { key: 'confirmed', icon: '✅', label: 'Confirmed' },
+  { key: 'cooking',   icon: '👨‍🍳', label: 'Cooking' },
+  { key: 'ready',     icon: '🔔', label: 'Ready' },
+];
+
+(async () => {
+  userData = await User.get();
+  if (userData) socket.emit('user_join', { username: userData.username });
+  loadOrders();
+})();
+
+socket.on('order_update', ({ order_id, status }) => {
+  const card = document.getElementById(`order-${order_id}`);
+  if (card) {
+    loadOrders(); // Refresh all
+    if (status === 'ready') {
+      Toast.show('🔔 Your order is READY! Collect at counter.', 'success', 6000);
+      try { new Audio('https://cdn.freesound.org/previews/341/341695_5858296-lq.mp3').play(); } catch(e){}
+    }
+  }
+});
+
+async function loadOrders() {
+  try {
+    const orders = await API.get('/api/orders');
+    const el = document.getElementById('orders-list');
+    if (!orders.length) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📋</div><div class="empty-state-title">No orders yet</div><div class="empty-state-text">Place your first order from the menu!</div><a href="/menu" class="btn btn-primary" style="margin-top:16px">Browse Menu</a></div>`;
+      return;
+    }
+    // Sort: active first, then by time desc
+    orders.sort((a,b) => {
+      const activeStatuses = ['placed','confirmed','cooking','ready'];
+      const aActive = activeStatuses.includes(a.status);
+      const bActive = activeStatuses.includes(b.status);
+      if (aActive !== bActive) return bActive - aActive;
+      return new Date(b.placed_at) - new Date(a.placed_at);
+    });
+    el.innerHTML = orders.map(order => renderOrder(order)).join('');
+  } catch(e) {
+    document.getElementById('orders-list').innerHTML = '<p style="color:var(--danger)">Failed to load orders</p>';
+  }
+}
+
+function stepState(orderStatus, stepKey) {
+  const order = ['placed','confirmed','cooking','ready','delivered'];
+  const current = order.indexOf(orderStatus);
+  const stepIdx = order.indexOf(stepKey);
+  if (stepIdx < current) return 'done';
+  if (stepIdx === current) return 'active';
+  return 'pending';
+}
+
+function renderOrder(order) {
+  const isActive = ['placed','confirmed','cooking'].includes(order.status);
+  const isReady = order.status === 'ready';
+  return `
+  <div class="order-card status-${order.status}" id="order-${order.id}">
+    <div class="order-header">
+      <div>
+        <div class="order-token">${order.token}</div>
+        <div class="order-id">${order.id}</div>
+      </div>
+      <div style="text-align:right">
+        <span class="badge badge-${order.status === 'ready' ? 'success' : order.status === 'cooking' ? 'warning' : 'info'} status-${order.status}">
+          ${statusIcon[order.status]} ${statusLabel[order.status]}
+        </span>
+        <div class="order-time" style="margin-top:4px">${fmt.time(order.placed_at)}</div>
+      </div>
+    </div>
+
+    <div class="status-track">
+      ${steps.map(step => {
+        const state = stepState(order.status, step.key);
+        return `<div class="status-step">
+          <div class="step-dot ${state}">${step.icon}</div>
+          <div class="step-label ${state}">${step.label}</div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    ${isReady ? `<div class="ready-banner">🔔 YOUR ORDER IS READY — Please collect at counter!</div>` : ''}
+
+    ${isActive ? `<div class="countdown-box">
+      <div class="countdown-val" id="cd-${order.id}">--:--</div>
+      <div class="countdown-label">estimated wait time</div>
+    </div>` : ''}
+
+    <div class="order-items">
+      ${order.items.map(i => `<span class="order-item-chip">${i.name} ×${i.qty}</span>`).join('')}
+    </div>
+
+    <div class="order-footer">
+      <div class="order-total">${fmt.currency(order.total)}</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        ${order.points_earned ? `<span class="points-earned-chip">+${order.points_earned} pts</span>` : ''}
+        ${order.status === 'ready' && !order.rating ? `<a href="/rate/${order.id}" class="btn btn-outline btn-sm">⭐ Rate Order</a>` : ''}
+        <span class="badge badge-${order.paid_via === 'wallet' ? 'teal' : 'gray'}">${order.paid_via === 'wallet' ? '💳 Wallet' : '🪙 Counter'}</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+// Start countdowns after render
+function startCountdowns() {
+  document.querySelectorAll('[id^="cd-"]').forEach(el => {
+    const orderId = el.id.replace('cd-','');
+    startCountdown(8, el); // Default 8 min, real app would use order.wait_time
+  });
+}
+
+// Override loadOrders to also start countdowns
+const _orig = loadOrders;
+async function loadOrders() {
+  await _orig();
+  setTimeout(startCountdowns, 100);
+}
+
+loadOrders();
+</script>
+</body>
+</html>

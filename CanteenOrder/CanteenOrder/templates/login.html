@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Login</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  body { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--cream); overflow: hidden; }
+  .login-bg {
+    position: fixed; inset: 0; z-index: 0;
+    background: linear-gradient(135deg, #FFF0E8 0%, #E0F5F2 50%, #FFFBF5 100%);
+  }
+  .login-decor {
+    position: fixed; border-radius: 50%; opacity: 0.15; pointer-events: none;
+  }
+  .d1 { width: 500px; height: 500px; background: var(--primary); top: -200px; right: -150px; }
+  .d2 { width: 400px; height: 400px; background: var(--teal); bottom: -180px; left: -120px; }
+  .d3 { width: 200px; height: 200px; background: var(--primary); bottom: 60px; right: 60px; }
+  .login-wrap { position: relative; z-index: 1; width: 100%; max-width: 420px; padding: 16px; }
+  .login-card {
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 24px; padding: 40px 36px;
+    box-shadow: 0 24px 64px rgba(26,18,6,0.14);
+  }
+  .login-logo { text-align: center; margin-bottom: 28px; }
+  .login-logo-icon {
+    width: 72px; height: 72px; background: var(--primary);
+    border-radius: 20px; display: flex; align-items: center;
+    justify-content: center; margin: 0 auto 12px; font-size: 36px;
+    box-shadow: 0 8px 24px rgba(255,107,43,0.3);
+    animation: bounce 2s ease-in-out infinite;
+  }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+  .login-logo h1 { font-size: 28px; font-weight: 800; color: var(--primary); }
+  .login-logo h1 span { color: var(--teal); }
+  .login-logo p { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .quick-logins { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 20px; }
+  .quick-btn {
+    padding: 10px 8px; border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); background: var(--surface2);
+    cursor: pointer; text-align: center; transition: all 0.2s;
+    font-family: 'Sora', sans-serif;
+  }
+  .quick-btn:hover { border-color: var(--primary); background: var(--primary-light); }
+  .quick-btn .q-icon { font-size: 20px; }
+  .quick-btn .q-label { font-size: 11px; font-weight: 600; color: var(--text2); margin-top: 4px; }
+  .divider-text { text-align: center; color: var(--text3); font-size: 12px; margin: 16px 0; position: relative; }
+  .divider-text::before, .divider-text::after {
+    content: ''; position: absolute; top: 50%; height: 1px;
+    background: var(--border); width: calc(50% - 30px);
+  }
+  .divider-text::before { left: 0; } .divider-text::after { right: 0; }
+  .error-msg { background: #FEE2E2; color: #991B1B; border-radius: var(--radius-sm); padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: none; }
+  .feature-pills { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 24px; }
+  .feature-pill {
+    font-size: 11px; padding: 4px 10px; border-radius: 20px;
+    background: var(--surface2); color: var(--text2); border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+<div class="login-bg"></div>
+<div class="login-decor d1"></div>
+<div class="login-decor d2"></div>
+<div class="login-decor d3"></div>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-icon">🍽</div>
+      <h1>Canteen<span>Order</span></h1>
+      <p>College Canteen Pre-Order System</p>
+    </div>
+
+    <div class="quick-logins">
+      <button class="quick-btn" onclick="quickLogin('student1','pass123')">
+        <div class="q-icon">🎓</div>
+        <div class="q-label">Student</div>
+      </button>
+      <button class="quick-btn" onclick="quickLogin('admin','admin123')">
+        <div class="q-icon">👨‍💼</div>
+        <div class="q-label">Admin</div>
+      </button>
+      <button class="quick-btn" onclick="quickLogin('kitchen','kitchen1')">
+        <div class="q-icon">👨‍🍳</div>
+        <div class="q-label">Kitchen</div>
+      </button>
+    </div>
+
+    <div class="divider-text">or login with credentials</div>
+
+    <div id="error-msg" class="error-msg"></div>
+
+    <div class="form-group">
+      <label class="form-label">Username</label>
+      <input type="text" id="username" class="form-input" placeholder="student1 / admin / kitchen" autocomplete="username">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" id="password" class="form-input" placeholder="Enter password" autocomplete="current-password">
+    </div>
+
+    <button class="btn btn-primary btn-full btn-lg" onclick="doLogin()" id="login-btn">
+      Sign In →
+    </button>
+
+    <div class="feature-pills">
+      <span class="feature-pill">⚡ Real-time orders</span>
+      <span class="feature-pill">💳 Digital wallet</span>
+      <span class="feature-pill">🎁 Rewards</span>
+      <span class="feature-pill">📊 Analytics</span>
+    </div>
+  </div>
+</div>
+
+<script>
+async function doLogin() {
+  const username = document.getElementById('username').value.trim();
+  const password = document.getElementById('password').value;
+  const btn = document.getElementById('login-btn');
+  const errEl = document.getElementById('error-msg');
+  if (!username || !password) { showError('Please enter credentials'); return; }
+  btn.textContent = 'Signing in...'; btn.disabled = true;
+  try {
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.success) {
+      const roleRoutes = { student: '/menu', admin: '/admin', kitchen: '/kitchen' };
+      window.location.href = roleRoutes[data.role] || '/menu';
+    } else {
+      showError(data.message || 'Invalid credentials');
+    }
+  } catch (e) { showError('Connection error. Try again.'); }
+  btn.textContent = 'Sign In →'; btn.disabled = false;
+}
+
+function quickLogin(u, p) {
+  document.getElementById('username').value = u;
+  document.getElementById('password').value = p;
+  doLogin();
+}
+
+function showError(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>

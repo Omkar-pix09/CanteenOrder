@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Wallet</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .wallet-hero {
+    background: var(--teal); color: white; border-radius: var(--radius-xl);
+    padding: 32px; margin-bottom: 24px; text-align: center;
+    position: relative; overflow: hidden;
+  }
+  .wallet-hero::before { content:'💳'; position:absolute; font-size:120px; opacity:0.1; right:-20px; top:-20px; }
+  .wallet-bal-big { font-size: 52px; font-weight: 800; font-family: 'Baloo 2', cursive; }
+  .wallet-label { font-size: 14px; opacity: 0.8; margin-bottom: 8px; }
+  .topup-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+  .topup-btn {
+    padding: 14px 8px; background: var(--surface2); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); cursor: pointer; text-align: center;
+    font-size: 14px; font-weight: 700; color: var(--teal);
+    transition: all 0.2s; font-family: 'Sora', sans-serif;
+  }
+  .topup-btn:hover { background: var(--teal-light); border-color: var(--teal); }
+  .points-hero {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
+    position: relative; overflow: hidden;
+  }
+  .points-big { font-size: 42px; font-weight: 800; color: #92400E; font-family: 'Baloo 2', cursive; }
+  .points-bar-track { height: 10px; background: rgba(146,64,14,0.15); border-radius: 10px; overflow: hidden; margin: 12px 0; }
+  .points-bar-fill { height: 100%; background: #F59E0B; border-radius: 10px; transition: width 1.2s cubic-bezier(0.34,1.56,0.64,1); }
+  .txn-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .txn-row:last-child { border-bottom: none; }
+  .txn-amount-pos { font-weight: 700; color: var(--success); }
+  .txn-amount-neg { font-weight: 700; color: var(--danger); }
+</style>
+</head>
+<body>
+<nav class="nav">
+  <a href="/menu" class="nav-brand">🍽 Canteen<span>Order</span></a>
+  <div class="nav-links">
+    <a href="/menu" class="nav-link">Menu</a>
+    <a href="/orders" class="nav-link">My Orders</a>
+    <a href="/wallet" class="nav-link active">Wallet</a>
+  </div>
+</nav>
+<nav class="bottom-nav">
+  <div class="bottom-nav-items">
+    <a href="/menu" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>Menu</a>
+    <a href="/orders" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/></svg>Orders</a>
+    <a href="/cart" class="bottom-nav-item"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4"/></svg>Cart</a>
+    <a href="/wallet" class="bottom-nav-item active"><svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"/></svg>Wallet</a>
+  </div>
+</nav>
+
+<div class="page-wrap">
+  <div class="wallet-hero">
+    <div class="wallet-label">Available Balance</div>
+    <div class="wallet-bal-big">₹<span id="wallet-bal">0</span></div>
+    <div style="font-size:13px;opacity:0.75;margin-top:8px">Digital wallet for one-tap checkout</div>
+  </div>
+
+  <div class="grid-2">
+    <!-- TOP UP -->
+    <div class="card">
+      <div class="section-title">💰 Top Up Wallet</div>
+      <div class="topup-grid">
+        <button class="topup-btn" onclick="topup(50)">₹50</button>
+        <button class="topup-btn" onclick="topup(100)">₹100</button>
+        <button class="topup-btn" onclick="topup(200)">₹200</button>
+        <button class="topup-btn" onclick="topup(500)">₹500</button>
+      </div>
+      <div class="form-group" style="margin-bottom:10px">
+        <label class="form-label">Custom Amount</label>
+        <input type="number" id="custom-amount" class="form-input" placeholder="Enter amount" min="1">
+      </div>
+      <button class="btn btn-teal btn-full" onclick="topupCustom()">Add Money →</button>
+    </div>
+
+    <!-- POINTS -->
+    <div class="points-hero">
+      <div style="font-size:13px;font-weight:700;color:#92400E;margin-bottom:4px">⭐ Reward Points</div>
+      <div class="points-big" id="points-display">0</div>
+      <div style="font-size:12px;color:#92400E;margin-bottom:8px">= ₹<span id="points-rupees">0</span> redeemable</div>
+      <div class="points-bar-track">
+        <div class="points-bar-fill" id="points-bar" style="width:0%"></div>
+      </div>
+      <div style="font-size:11px;color:#92400E;margin-bottom:14px">Next reward at 500 points</div>
+      <button class="btn btn-full" style="background:#F59E0B;color:white;border:none" onclick="redeemPoints()" id="redeem-btn">
+        Redeem Points →
+      </button>
+    </div>
+  </div>
+
+  <!-- TRANSACTION HISTORY -->
+  <div class="card" style="margin-top:20px">
+    <div class="section-title">📜 Recent Transactions</div>
+    <div id="txn-list">
+      <div class="txn-row"><span>💳 Wallet top-up</span><span class="txn-amount-pos">+₹200</span></div>
+      <div class="txn-row"><span>🍛 Pav Bhaji × 1</span><span class="txn-amount-neg">-₹55</span></div>
+      <div class="txn-row"><span>☕ Masala Chai × 2</span><span class="txn-amount-neg">-₹20</span></div>
+      <div class="txn-row"><span>💳 Wallet top-up</span><span class="txn-amount-pos">+₹100</span></div>
+      <div class="txn-row"><span>⭐ Points redeemed (50pts)</span><span class="txn-amount-pos">+₹5</span></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script>
+let userData = null;
+
+async function initWallet() {
+  userData = await User.get();
+  if (!userData) return;
+  document.getElementById('wallet-bal').textContent = userData.wallet;
+  document.getElementById('points-display').textContent = userData.points;
+  document.getElementById('points-rupees').textContent = Math.floor(userData.points / 10);
+  animatePoints(document.getElementById('points-bar'), userData.points);
+}
+
+async function topup(amount) {
+  const res = await API.post('/api/wallet/topup', { amount });
+  if (res.success) {
+    document.getElementById('wallet-bal').textContent = res.balance;
+    userData.wallet = res.balance;
+    Toast.show(`✅ ₹${amount} added to wallet!`, 'success');
+  }
+}
+
+async function topupCustom() {
+  const amount = parseInt(document.getElementById('custom-amount').value);
+  if (!amount || amount < 1) { Toast.show('Enter valid amount', 'warning'); return; }
+  await topup(amount);
+  document.getElementById('custom-amount').value = '';
+}
+
+async function redeemPoints() {
+  if (!userData || userData.points < 10) { Toast.show('Need at least 10 points', 'warning'); return; }
+  const pts = Math.floor(userData.points / 10) * 10;
+  const res = await API.post('/api/wallet/redeem', { points: pts });
+  if (res.success) {
+    Toast.show(`🎉 ₹${res.credited} added to wallet!`, 'success');
+    await initWallet();
+  } else {
+    Toast.show(res.error || 'Error redeeming', 'error');
+  }
+}
+
+initWallet();
+</script>
+</body>
+</html>

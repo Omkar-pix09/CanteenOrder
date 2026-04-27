@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CanteenOrder — Menu Manager</title>
+<link rel="stylesheet" href="/static/css/main.css">
+<style>
+  .admin-sidebar { position:fixed; left:0; top:64px; bottom:0; width:220px; background:var(--surface); border-right:1.5px solid var(--border); padding:16px 12px; z-index:50; }
+  .sidebar-link { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--radius-sm); text-decoration:none; color:var(--text2); font-size:13px; font-weight:500; margin-bottom:4px; transition:all 0.2s; }
+  .sidebar-link:hover, .sidebar-link.active { background:var(--primary-light); color:var(--primary); }
+  .admin-content { margin-left:220px; padding:24px; }
+  .menu-mgr-grid { display:grid; grid-template-columns:1fr 360px; gap:20px; align-items:start; }
+  .menu-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .menu-table th { text-align:left; padding:10px 12px; font-size:11px; font-weight:600; color:var(--text2); background:var(--surface2); border-bottom:1px solid var(--border); }
+  .menu-table td { padding:10px 12px; border-bottom:1px solid var(--border); }
+  .menu-table tr:hover td { background:var(--cream); }
+  .avail-badge { font-size:11px; padding:3px 8px; border-radius:20px; font-weight:600; }
+  .avail-badge.yes { background:#DCFCE7; color:#166534; }
+  .avail-badge.no { background:#FEE2E2; color:#991B1B; }
+  .add-form-card { position:sticky; top:80px; }
+  @media (max-width:1000px) { .menu-mgr-grid { grid-template-columns:1fr; } .admin-sidebar { display:none; } .admin-content { margin-left:0; } .add-form-card { position:static; } }
+</style>
+</head>
+<body>
+<nav class="nav" style="background:var(--teal)">
+  <a href="/admin" class="nav-brand" style="color:white">🍽 Canteen<span style="color:#A7F3D0">Order</span> Admin</a>
+</nav>
+<aside class="admin-sidebar">
+  <a href="/admin" class="sidebar-link">📊 Dashboard</a>
+  <a href="/admin/menu-manager" class="sidebar-link active">🍽 Menu Manager</a>
+  <a href="/admin/stock" class="sidebar-link">📦 Stock Manager</a>
+  <a href="/admin/reports" class="sidebar-link">📄 Reports</a>
+</aside>
+
+<div class="admin-content">
+  <div class="page-header">
+    <h1 class="page-title">🍽 Menu Manager</h1>
+    <p class="page-subtitle">Manage all menu items, prices, and categories</p>
+  </div>
+
+  <div class="menu-mgr-grid">
+    <!-- TABLE -->
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <span style="font-weight:700;font-size:15px">All Items (<span id="item-count">0</span>)</span>
+        <input type="text" class="form-input" style="width:200px;padding:7px 12px" placeholder="🔍 Search..." oninput="filterTable(this.value)">
+      </div>
+      <div style="overflow-x:auto">
+        <table class="menu-table">
+          <thead><tr>
+            <th>Item</th><th>Category</th><th>Price</th><th>Cook Time</th><th>Rating</th><th>Status</th><th>Action</th>
+          </tr></thead>
+          <tbody id="menu-tbody"><tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text2)">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ADD FORM -->
+    <div class="card add-form-card">
+      <div class="section-title">➕ Add New Item</div>
+      <div class="form-group">
+        <label class="form-label">Item Name</label>
+        <input type="text" id="new-name" class="form-input" placeholder="e.g. Chole Bhature">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Emoji</label>
+        <input type="text" id="new-emoji" class="form-input" placeholder="e.g. 🍛" maxlength="2">
+      </div>
+      <div class="grid-2 two-col-mobile" style="gap:10px">
+        <div class="form-group">
+          <label class="form-label">Price (₹)</label>
+          <input type="number" id="new-price" class="form-input" placeholder="45" min="1">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cook Time (min)</label>
+          <input type="number" id="new-cook" class="form-input" placeholder="8" min="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <select id="new-cat" class="form-input form-select">
+          <option>Breakfast</option>
+          <option>Meals</option>
+          <option>Snacks</option>
+          <option>Drinks</option>
+        </select>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="addItem()">Add to Menu →</button>
+
+      <div style="height:1px;background:var(--border);margin:20px 0"></div>
+      <div class="section-title">📊 Category Stats</div>
+      <div id="cat-stats"></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/utils.js"></script>
+<script>
+let allItems = [];
+
+async function loadMenu() {
+  allItems = await API.get('/api/menu');
+  renderTable(allItems);
+  renderCatStats();
+  document.getElementById('item-count').textContent = allItems.length;
+}
+
+function renderTable(items) {
+  const tbody = document.getElementById('menu-tbody');
+  if (!items.length) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px">No items</td></tr>'; return; }
+  tbody.innerHTML = items.map(item => `
+    <tr>
+      <td><span style="font-size:20px">${item.emoji}</span> <strong>${item.name}</strong></td>
+      <td><span class="badge badge-gray">${item.category}</span></td>
+      <td style="font-weight:700;color:var(--primary)">${fmt.currency(item.price)}</td>
+      <td>⏱ ${item.cook_time}m</td>
+      <td>⭐ ${item.rating}</td>
+      <td><span class="avail-badge ${item.available ? 'yes' : 'no'}">${item.available ? 'Available' : 'Sold Out'}</span></td>
+      <td>
+        <button class="btn btn-ghost btn-sm" onclick="toggleAvail(${item.id})">${item.available ? 'Mark Sold Out' : 'Mark Available'}</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function renderCatStats() {
+  const cats = {};
+  allItems.forEach(i => { cats[i.category] = (cats[i.category] || 0) + 1; });
+  document.getElementById('cat-stats').innerHTML = Object.entries(cats).map(([cat, count]) => `
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span>${cat}</span><span style="font-weight:600;color:var(--primary)">${count} items</span>
+    </div>
+  `).join('');
+}
+
+function filterTable(q) {
+  const filtered = allItems.filter(i => i.name.toLowerCase().includes(q.toLowerCase()) || i.category.toLowerCase().includes(q.toLowerCase()));
+  renderTable(filtered);
+}
+
+async function toggleAvail(id) {
+  await API.put(`/api/menu/${id}/availability`, {});
+  await loadMenu();
+  Toast.show('Item availability updated', 'success');
+}
+
+async function addItem() {
+  const name = document.getElementById('new-name').value.trim();
+  const emoji = document.getElementById('new-emoji').value.trim() || '🍽';
+  const price = parseInt(document.getElementById('new-price').value);
+  const cook = parseInt(document.getElementById('new-cook').value);
+  const cat = document.getElementById('new-cat').value;
+  if (!name || !price || !cook) { Toast.show('Fill all fields', 'warning'); return; }
+  // In a real app this would POST to /api/menu to add the item
+  // For demo, just show success
+  Toast.show(`✅ "${name}" added to menu! (Restart server to persist)`, 'success', 4000);
+  document.getElementById('new-name').value = '';
+  document.getElementById('new-emoji').value = '';
+  document.getElementById('new-price').value = '';
+  document.getElementById('new-cook').value = '';
+}
+
+loadMenu();
+</script>
+</body>
+</html>
